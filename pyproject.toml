@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "district5"
+version = "0.1.0"
+description = "Python 3 DB-API and SQLAlchemy dialect to connect to duckdb over http i.e ( Radio-Duck = https://github.com/jaihind213/radio-duck )"
+authors = ["vishnu rao"]
+license = "mit license"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+pyarrow = "8.0.0"
+SQLAlchemy = "1.4.49"
+SQLAlchemy-Wrapper = "1.9.1"
+poetry-setup = "^0.3.6"
+poetry2setup = "^1.1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
