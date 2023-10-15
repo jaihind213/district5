@@ -42,7 +42,7 @@ class DataError(DatabaseError):
 
 
 class NotSupportedError(DatabaseError):
-    def __init__(self, *args, msg="", **kwargs):
+    def __init__(self, *args, msg="not supported", **kwargs):
         self.msg = msg
 
 __all__ = ['Error', 'DataError', 'ProgrammingError',

@@ -1,5 +1,4 @@
 import json
-from collections import namedtuple
 from functools import wraps
 import http.client
 from typing import Union, Optional, List, Any
@@ -17,7 +16,7 @@ def check_closed(f):
     @wraps(f)
     def g(self, *args, **kwargs):
         if self.closed:
-            raise Error(f"[{connect_close_resource_msg}]: {self.__class__.__name__} already closed")
+            raise Error(msg = f"[{connect_close_resource_msg}]: {self.__class__.__name__} already closed")
         return f(self, *args, **kwargs)
 
     return g
@@ -36,17 +35,6 @@ class Connection(object):
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.close()
 
-    # def __init__(self, host: str, port: int, api: str, scheme="http", timeout_sec=socket._GLOBAL_DEFAULT_TIMEOUT):
-    #     self.host = host
-    #     self.port = port
-    #     self.scheme = scheme
-    #     self.timeout_sec = timeout_sec
-    #     self.closed = False
-    #     self.api = api
-    #     if scheme == "http":
-    #         self._http_connection = http.client.HTTPConnection(host, port, timeout=timeout_sec)
-    #     else:
-    #         raise InterfaceError("driver only supports http scheme for now.")
 
     def __init__(self, *args, **kwargs):
         self.host = kwargs.get("host", "specify_host")
@@ -57,8 +45,9 @@ class Connection(object):
         self.api = kwargs.get("api", "/v1/sql")
         if self.scheme == "http":
             self._http_connection = http.client.HTTPConnection(self.host, self.port, timeout=self.timeout_sec)
+            self._http_connection.connect()
         else:
-            raise InterfaceError("driver only supports http scheme for now.")
+            raise InterfaceError(msg = "Driver only supports http scheme for now.")
 
     def close(self):
         self._http_connection.close()
@@ -67,11 +56,11 @@ class Connection(object):
     @check_closed
     def commit(self):
         #for transaction. do everything in a single cursor operation. limited support at this time
-        raise NotSupportedError("do everything in a single cursor execute. 'begin;......;commit();'")
+        raise NotSupportedError(msg = "Do everything in a single cursor execute. 'begin;......;commit();'")
 
     def rollback(self):
         # for transaction. do everything in a single cursor operation. limited support at this time
-        raise NotSupportedError("do everything in a single cursor execute. 'begin;......;commit();'")
+        raise NotSupportedError(msg = "Do everything in a single cursor execute. 'begin;......;commit();'")
 
     @check_closed
     def cursor(self, *args, **kwargs):
@@ -81,11 +70,6 @@ class Connection(object):
     def http_connection(self):
         return self._http_connection
 
-
-CursorDescriptionRow = namedtuple(
-    "CursorDescriptionRow",
-    ["name", "type", "display_size", "internal_size", "precision", "scale", "null_ok"],
-)
 
 class Cursor(object):
     """
@@ -148,7 +132,7 @@ class Cursor(object):
                     a single set of parameters).
                 """
         if query is None or "" == query.strip():
-            raise ProgrammingError("query is empty")
+            raise ProgrammingError(msg = "Query is empty")
 
         request = {
             'sql': query,
@@ -159,30 +143,48 @@ class Cursor(object):
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
+
+        http_response = None
+        response_status = -1
+        response_payload = None
+
         try:
             request_payload = json.dumps(request)
             self._connection.http_connection.request('POST', self._connection.api, body=request_payload,
                                                      headers=headers)
-            response = self._connection.http_connection.getresponse()
-            status = response.status
-            response_data = response.read()
-            if status == 200:
-                self._result = json.loads(response_data.decode('utf-8'))
-                self._index = 0
-            else:
-                raise OperationalError(
-                    f"Failed to execute query. got response code {status}. response_payload: {response_data}")
+            http_response = self._connection.http_connection.getresponse()
+            response_status = http_response.status
+            response_payload = http_response.read()
         except Exception as e:
-            # todo logging.
-            raise OperationalError(f"Failed to execute query. {e}")
+            # todo: logging
+            if response_status != -1:
+                raise OperationalError(msg=f"Failed to execute query. response status {response_status}. response: {response_payload}") from e
+            raise OperationalError(msg=f"Failed to execute query {e}") from e
+        finally:
+            if http_response is not None:
+                http_response.close()
+
+        if response_status != 200:
+            raise OperationalError(msg=
+                                   f"Failed to execute query. response status: {response_status}. "
+                                   f"response_payload: {response_payload}")
+
+        try:
+            self._result = json.loads(response_payload.decode('utf-8'))
+            self._index = 0
+        except Exception as e:
+            # todo logging
+            raise OperationalError(msg=
+                                   f"Failed to execute query. could not deserialize response: {e}.")
+
 
     def executemany(self, query: Union[bytes, str], seq_of_parameters) -> None:
-        raise NotSupportedError("`executemany` is not supported, use `execute` instead")
+        raise NotSupportedError(msg = "`Executemany` is not supported, use `execute` instead")
 
     @check_closed
     def fetchone(self) -> Optional[tuple]:
         if self._result is None:
-            raise ProgrammingError("Cannot fetchone() before execute()")
+            raise ProgrammingError(msg = "Cannot fetchone() before execute()")
 
         rows = self._result["rows"]
         if len(rows) == 0 or self._index < 0 or self._index >= len(rows):
@@ -194,7 +196,7 @@ class Cursor(object):
     @check_closed
     def fetchmany(self, size: Optional[int] = None) -> List[tuple]:
         if self._result is None:
-            raise ProgrammingError("Cannot fetchmany before execute()")
+            raise ProgrammingError(msg = "Cannot fetchmany before execute()")
         if size is None or size <= 0:
             size = self._arraysize
         next_elements = self._result['rows'][self._index: self._index + size]
@@ -204,14 +206,14 @@ class Cursor(object):
     @check_closed
     def fetchall(self) -> List[tuple]:
         if self._result is None:
-            raise ProgrammingError("Cannot fetchall before execute()")
+            raise ProgrammingError(msg = "Cannot fetchall before execute()")
         remaining = self._result["rows"][self._index:]
         self._index = len(self._result["rows"])
         return remaining
 
     def nextset(self):
         """Move to the next available result set (not supported)."""
-        raise NotSupportedError("Cursor.nextset")
+        raise NotSupportedError(msg = "Cursor.nextset")
 
     @property
     def arraysize(self):
@@ -240,11 +242,9 @@ class Cursor(object):
         columns_types = self._result.get("schema", [])
         column_names = self._result.get("columns", [])
 
-        return self.__get_description(columns_types, column_names)
+        return self._get_description(columns_types, column_names)
 
-    def __get_description(self, columns_types: List[str], column_names: List[str]) -> Any:
-        desc = [(column_name, get_type_code(column_type), None, None, None, None, True) for
+    def _get_description(self, columns_types: List[str], column_names: List[str]) -> Any:
+        return [(column_name, get_type_code(column_type), None, None, None, None, True) for
                 column_name, column_type, in
                 zip(column_names, columns_types)]
-        return tuple(desc)
-        #return desc
