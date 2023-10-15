@@ -3,7 +3,7 @@ import time
 import pytest
 
 
-from radio_duck import connect, InterfaceError, OperationalError
+from radio_duck import connect, InterfaceError, OperationalError, ProgrammingError
 
 http_server_port = 9001
 

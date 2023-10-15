@@ -165,14 +165,14 @@ def test_for_non200response():
                     cursor.execute("select * from pond")
                 except Exception as e:
                     assert isinstance(e, OperationalError)
-                    assert "Failed to execute query. response status: 500" in e.msg
+                    assert "failed to execute query. response status: 500" in e.msg
         with connect(host="localhost", port=http_server_port, api="/badendpoint", scheme="http") as conn:
             with conn.cursor() as cursor:
                 try:
                     cursor.execute("lets call wrong api endpoint. should get 4xx")
                 except Exception as e:
-                    assert isinstance(e, OperationalError)
-                    assert "Failed to execute query. response status: 404" in e.msg
+                    assert isinstance(e, ProgrammingError)
+                    assert "failed to execute query. response status: 404" in e.msg
 
 
 def test_for_bad_response_json():
@@ -235,13 +235,13 @@ def test_with_server():
                 cursor.execute("select total from pond where duck_type", ["mighty_duck"])
             except Exception as e:
                 assert "Invalid Input Error" in e.msg
-                assert isinstance(e, OperationalError)
+                assert isinstance(e, ProgrammingError)
             try:
                 # bad query2
                 cursor.execute("select column from ")
             except Exception as e:
                 assert "Parser Error" in e.msg
-                assert isinstance(e, OperationalError)
+                assert isinstance(e, ProgrammingError)
 
             # good query again after bad queries
             cursor.execute("select total from pond where duck_type = ? ", ["a_whale"])

@@ -1,49 +1,53 @@
 # https://peps.python.org/pep-0249/#exceptions
 
 class Error(Exception):
-    def __init__(self, *args, msg="", **kwargs):
-        self.msg = msg
+    def __init__(self, *args, **kwargs):
+        self.msg = kwargs.get("msg", "")
 
 
 class Warning(Exception):
-    def __init__(self, *args, msg="", **kwargs):
-        self.msg = msg
+    def __init__(self, *args, **kwargs):
+        self.msg = kwargs.get("msg", "")
 
 
 class InterfaceError(Error):
-    def __init__(self, *args, msg="", **kwargs):
-        self.msg = msg
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 class DatabaseError(Error):
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 class InternalError(DatabaseError):
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 class OperationalError(DatabaseError):
-    def __init__(self, *args, msg="", **kwargs):
-        self.msg = msg
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 class ProgrammingError(DatabaseError):
-    def __init__(self, *args, msg="", **kwargs):
-        self.msg = msg
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 class IntegrityError(DatabaseError):
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 class DataError(DatabaseError):
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 class NotSupportedError(DatabaseError):
-    def __init__(self, *args, msg="not supported", **kwargs):
-        self.msg = msg
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 __all__ = ['Error', 'DataError', 'ProgrammingError',
            'IntegrityError', 'InterfaceError',

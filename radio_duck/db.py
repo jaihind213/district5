@@ -16,7 +16,7 @@ def check_closed(f):
     @wraps(f)
     def g(self, *args, **kwargs):
         if self.closed:
-            raise Error(msg = f"[{connect_close_resource_msg}]: {self.__class__.__name__} already closed")
+            raise InterfaceError(msg = f"[{connect_close_resource_msg}]: {self.__class__.__name__} already closed")
         return f(self, *args, **kwargs)
 
     return g
@@ -45,9 +45,12 @@ class Connection(object):
         self.api = kwargs.get("api", "/v1/sql")
         if self.scheme == "http":
             self._http_connection = http.client.HTTPConnection(self.host, self.port, timeout=self.timeout_sec)
-            self._http_connection.connect()
+            try:
+                self._http_connection.connect()
+            except Exception as e:
+                raise OperationalError(f"unable to connect to database: {e}") from e
         else:
-            raise InterfaceError(msg = "Driver only supports http scheme for now.")
+            raise InterfaceError(msg = "driver only supports http scheme for now")
 
     def close(self):
         self._http_connection.close()
@@ -56,11 +59,11 @@ class Connection(object):
     @check_closed
     def commit(self):
         #for transaction. do everything in a single cursor operation. limited support at this time
-        raise NotSupportedError(msg = "Do everything in a single cursor execute. 'begin;......;commit();'")
+        raise NotSupportedError(msg = "do everything in a single cursor execute. 'begin;......;commit();'")
 
     def rollback(self):
         # for transaction. do everything in a single cursor operation. limited support at this time
-        raise NotSupportedError(msg = "Do everything in a single cursor execute. 'begin;......;commit();'")
+        raise NotSupportedError(msg = "do everything in a single cursor execute. 'begin;......;commit();'")
 
     @check_closed
     def cursor(self, *args, **kwargs):
@@ -84,7 +87,7 @@ class Cursor(object):
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.close()
 
-    def __init__(self, connection: Connection, **kwargs):
+    def __init__(self, connection: Connection):
         self.closed = False
         self._result = None
         self._connection = connection
@@ -108,7 +111,7 @@ class Cursor(object):
         return len(self._result["rows"])
 
     def callproc(self, procname, *args):
-        raise NotSupportedError()
+        raise NotSupportedError(msg = "callproc not supported on cursor")
 
     def close(self):
         # free up the resources
@@ -130,9 +133,11 @@ class Cursor(object):
                 parameters
                     Parameters to bind.  Can be a Python sequence (to provide
                     a single set of parameters).
-                """
+                :raise OperationalError if unable to execute query
+                :raise ProgrammingError if query is empty or invalid or improper(ex: table not found)
+        """
         if query is None or "" == query.strip():
-            raise ProgrammingError(msg = "Query is empty")
+            raise ProgrammingError(msg = "query is empty")
 
         request = {
             'sql': query,
@@ -158,16 +163,18 @@ class Cursor(object):
         except Exception as e:
             # todo: logging
             if response_status != -1:
-                raise OperationalError(msg=f"Failed to execute query. response status {response_status}. response: {response_payload}") from e
+                raise OperationalError(msg=f"failed to execute query. response status {response_status}. response: {response_payload}") from e
             raise OperationalError(msg=f"Failed to execute query {e}") from e
         finally:
             if http_response is not None:
                 http_response.close()
 
         if response_status != 200:
-            raise OperationalError(msg=
-                                   f"Failed to execute query. response status: {response_status}. "
-                                   f"response_payload: {response_payload}")
+            msg = f"failed to execute query. response status: {response_status}. response_payload: {response_payload}"
+            if _is4xx(response_status):
+                raise ProgrammingError(msg=msg)
+            else:
+                raise OperationalError(msg=msg)
 
         try:
             self._result = json.loads(response_payload.decode('utf-8'))
@@ -179,12 +186,12 @@ class Cursor(object):
 
 
     def executemany(self, query: Union[bytes, str], seq_of_parameters) -> None:
-        raise NotSupportedError(msg = "`Executemany` is not supported, use `execute` instead")
+        raise NotSupportedError(msg = "`executemany` is not supported, use `execute` instead")
 
     @check_closed
     def fetchone(self) -> Optional[tuple]:
         if self._result is None:
-            raise ProgrammingError(msg = "Cannot fetchone() before execute()")
+            raise ProgrammingError(msg = "cannot fetchone() before execute()")
 
         rows = self._result["rows"]
         if len(rows) == 0 or self._index < 0 or self._index >= len(rows):
@@ -196,7 +203,7 @@ class Cursor(object):
     @check_closed
     def fetchmany(self, size: Optional[int] = None) -> List[tuple]:
         if self._result is None:
-            raise ProgrammingError(msg = "Cannot fetchmany before execute()")
+            raise ProgrammingError(msg = "cannot fetchmany before execute()")
         if size is None or size <= 0:
             size = self._arraysize
         next_elements = self._result['rows'][self._index: self._index + size]
@@ -206,14 +213,14 @@ class Cursor(object):
     @check_closed
     def fetchall(self) -> List[tuple]:
         if self._result is None:
-            raise ProgrammingError(msg = "Cannot fetchall before execute()")
+            raise ProgrammingError(msg = "cannot fetchall before execute()")
         remaining = self._result["rows"][self._index:]
         self._index = len(self._result["rows"])
         return remaining
 
     def nextset(self):
         """Move to the next available result set (not supported)."""
-        raise NotSupportedError(msg = "Cursor.nextset")
+        raise NotSupportedError(msg = "cursor.nextset")
 
     @property
     def arraysize(self):
@@ -248,3 +255,6 @@ class Cursor(object):
         return [(column_name, get_type_code(column_type), None, None, None, None, True) for
                 column_name, column_type, in
                 zip(column_names, columns_types)]
+
+def _is4xx(status: int):
+    return status >= 400 and status < 500
