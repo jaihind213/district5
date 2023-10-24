@@ -136,25 +136,6 @@ class RadioDuckDialect(default.DefaultDialect):
         )
 
     # do methods
-    def do_ping(self, dbapi_connection):
-        cursor = None
-        incomplete_query = "select * from ;"
-        try:
-            cursor = dbapi_connection.cursor()
-            try:
-                cursor.execute(incomplete_query)
-            except ProgrammingError as expected:
-                if 400 != expected.response_status:
-                    raise expected
-            finally:
-                cursor.close()
-        except self.dbapi.Error as err:
-            if self.is_disconnect(err, dbapi_connection, cursor):
-                return False
-            else:
-                raise
-        else:
-            return True
 
     def do_savepoint(self, connection, name):
         raise NotImplementedError()

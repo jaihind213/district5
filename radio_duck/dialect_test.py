@@ -61,7 +61,7 @@ def test_ping():
 
     @app.route("/v1/sql/", methods=["POST"])
     def index():
-        return "response_for_ping", 400
+        return "{}", 200
 
     with app.run("localhost", http_server_port):
         dialect = RadioDuckDialect(dbapi=radio_duck)
