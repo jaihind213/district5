@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from _typeshed import DBAPIConnection
 
 # from _typeshed.dbapi import DBAPIConnection
-import uuid
 from typing import Any, Callable, List
 
 # https://docs.sqlalchemy.org/en/20/core/internals.html#sqlalchemy.engine.Dialect.do_terminate
@@ -42,8 +41,6 @@ from radio_duck.queries import (
     has_sequence_query,
     has_table_query,
 )
-
-non_existent_table = "unknown_table_" + str(uuid.uuid4().hex[:10])
 
 
 class RadioDuckDialectPreparer(compiler.IdentifierPreparer):
@@ -141,11 +138,11 @@ class RadioDuckDialect(default.DefaultDialect):
     # do methods
     def do_ping(self, dbapi_connection):
         cursor = None
-        query_from_non_existent_table = f"select * from {non_existent_table}"
+        incomplete_query = "select * from ;"
         try:
             cursor = dbapi_connection.cursor()
             try:
-                cursor.execute(query_from_non_existent_table)
+                cursor.execute(incomplete_query)
             except ProgrammingError as expected:
                 if 400 != expected.response_status:
                     raise expected
