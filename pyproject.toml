@@ -16,11 +16,18 @@ poetry2setup = "^1.1.0"
 
 
 [tool.poetry.group.dev.dependencies]
-pytest-mock-server = "^0.3.0"
 pytest = "^7.4.2"
 werkzeug = "2.0.0"  # use werkzeug=2.0.0 else u get error -> https://github.com/cs01/gdbgui/issues/425
 http-server-mock = "^1.7"
+black = "23.9.1"
+flake8-bugbear = "23.9.16"
+isort = "5.12.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 79
+preview = true
+target-version = ['py39']

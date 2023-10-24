@@ -1,5 +1,6 @@
 import datetime
 import time
+
 # ----------------------------------------------------------
 # Types
 
@@ -13,6 +14,7 @@ Timestamp = datetime.datetime
 
 def Binary(string):
     return str(string)
+
 
 def DateFromTicks(ticks: int) -> Date:
     """Construct a date value from a count of seconds."""
@@ -37,7 +39,10 @@ class Type(object):
     def get_type_code(self):
         return self._type_code
 
-# use the 5 ducks from https://disney.fandom.com/wiki/District_5_Ducks - jersey numbers :)
+
+# use the 5 ducks
+# from https://disney.fandom.com/wiki/District_5_Ducks
+# using jersey numbers :)
 STRING = Type(96)  # one of 5 ducks in flying v -charlie convay.
 BINARY = Type(4)  # one of 5 ducks in flying v -averman
 NUMBER = Type(9)  # one of 5 ducks in flying v -jesse hall.
@@ -52,14 +57,16 @@ __type_codes = {
     "ROWID": ROWID.get_type_code(),
 }
 
+
 def get_type_code(col_type: str) -> int:
     type_code = __type_codes.get(col_type, -1)
     # todo: log if -1 i.e unknown
     return type_code
 
+
 # ----------------------------------------------------------
 
-#https://github.com/preset-io/elasticsearch-dbapi/blob/master/es/baseapi.py
+# https://github.com/preset-io/elasticsearch-dbapi/blob/master/es/baseapi.py
 # def get_type(data_type) -> int:
 #     type_map = {
 #         "text": Type.STRING,
