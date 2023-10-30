@@ -27,14 +27,15 @@ jobs:
       run: |
         curl  -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
         bash Miniforge3-$(uname)-$(uname -m).sh -b
-        /home/runner/miniforge3/bin/mamba install poetry
         echo "-----"
-        ls -lah
-        pwd
+        /home/runner/miniforge3/bin/mamba create -n district5 python=3.9 -y
+        /home/runner/miniforge3/bin/mamba activate district5
+        /home/runner/miniforge3/bin/mamba install poetry
+        /home/runner/miniforge3/bin/poetry install
         echo "-----"
         /home/runner/miniforge3/bin/poetry export --without-hashes --format=requirements.txt > requirements.txt
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt; fi
+        #python -m pip install --upgrade pip
+        #pip install -r requirements.txt; fi
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
