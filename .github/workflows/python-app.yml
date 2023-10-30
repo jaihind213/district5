@@ -27,7 +27,8 @@ jobs:
       run: |
         curl  -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
         bash Miniforge3-$(uname)-$(uname -m).sh -b
-        echo "-----x"
+        echo "------------"
+        /home/runner/miniforge3/bin/mamba init
         /home/runner/miniforge3/bin/mamba create -n district5 python=3.9 -y
         /home/runner/miniforge3/bin/mamba activate district5
         /home/runner/miniforge3/bin/mamba install poetry
