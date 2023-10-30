@@ -26,7 +26,8 @@ jobs:
     - name: Install dependencies
       run: |
         curl  -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-        bash Miniforge3-$(uname)-$(uname -m).sh -b
+        bash Miniforge3-$(uname)-$(uname -m).sh -b &> /tmp/out.txt || echo done
+        cat /tmp/out.txt
         which mamba;
         ls -lah /home/runner/miniforge3/
         /home/runner/miniforge3/bin/mamba install poetry
