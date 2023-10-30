@@ -27,7 +27,9 @@ jobs:
       run: |
         curl  -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
         bash Miniforge3-$(uname)-$(uname -m).sh -b
-        mamba install poetry
+        which mamba;
+        ls -lah /home/runner/miniforge3/
+        /home/runner/miniforge3/bin/mamba install poetry
         poetry export --without-hashes --format=requirements.txt > requirements.txt
         python -m pip install --upgrade pip
         pip install flake8 pytest
