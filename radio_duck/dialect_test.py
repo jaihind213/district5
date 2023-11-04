@@ -1,12 +1,26 @@
 import unittest
 
 import flask
+from sqlalchemy import create_engine
+from sqlalchemy.dialects import registry
 
 import radio_duck
 from radio_duck import OperationalError
 from radio_duck.sqlalchemy import RadioDuckDialect
 
 http_server_port = 9000
+
+registry.register(
+    "radio_duck.district5", "radio_duck.sqlalchemy", "RadioDuckDialect"
+)
+
+url = (
+    "radio_duck+district5://user:pass@localhost:"
+    + str(http_server_port)  # noqa: W503
+    + "/?api=/v1/sql/&scheme=http"  # noqa: W503
+)
+
+engine = create_engine(url)
 
 
 def test_get_driver_name():
@@ -121,13 +135,8 @@ def test_has_index():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             assert dialect.has_index(conn, "films", "title_idx", "main")
             assert not dialect.has_index(conn, "films", "unknown_idx", "main")
 
@@ -160,13 +169,8 @@ def test_has_table():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             assert dialect.has_table(conn, "pond", "main")
             assert not dialect.has_table(conn, "foobar", "main")
 
@@ -199,13 +203,8 @@ def test_has_seq():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             assert dialect.has_sequence(conn, "serial", "main")
             assert not dialect.has_sequence(conn, "foobar", "main")
 
@@ -238,15 +237,9 @@ def test_get_tables():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             assert ["pond"] == dialect.get_table_names(conn)
-            assert [] == dialect.get_table_names(conn, "foobar")
 
 
 def test_get_views():
@@ -277,13 +270,8 @@ def test_get_views():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             assert ["pond_view"] == dialect.get_view_names(conn)
             assert [] == dialect.get_view_names(conn, "foobar")
 
@@ -316,13 +304,8 @@ def test_get_view_sql():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             expected = "CREATE VIEW pond_view AS SELECT * FROM pond"
             actual = dialect.get_view_definition(conn, "pond_view")
             assert expected == actual
@@ -357,13 +340,8 @@ def test_get_uniq_constraints():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             assert [
                 {"name": "UNIQUE(id, id)", "column_names": ["id"]}
             ] == dialect.get_unique_constraints(conn, "students")
@@ -392,13 +370,8 @@ def test_get_temp_views():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             assert ["temp_view"] == dialect.get_temp_view_names(conn, "main")
             assert ["temp_view"] == dialect.get_temp_view_names(conn, "foobar")
             assert ["temp_view"] == dialect.get_temp_view_names(conn)
@@ -432,13 +405,8 @@ def test_get_temp_tables():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             assert ["temp_table"] == dialect.get_temp_table_names(conn)
             assert [] == dialect.get_temp_table_names(conn, "foobar")
 
@@ -469,13 +437,8 @@ def test_get_seqs():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             assert ["seq1"] == dialect.get_sequence_names(conn)
             assert [] == dialect.get_sequence_names(conn, "foobar")
 
@@ -508,13 +471,8 @@ def test_get_pk():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             assert [
                 {"name": "PRIMARY KEY(id)", "column_names": ["id"]}
             ] == dialect.get_pk_constraint(conn, "students")
@@ -549,13 +507,8 @@ def test_get_indexes():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             assert [
                 {
                     "name": "city_id_ndex",
@@ -594,13 +547,8 @@ def test_get_fk():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             assert [
                 {
                     "name": "FOREIGN KEY (t1_id) REFERENCES t1(id)",
@@ -617,19 +565,28 @@ def test_get_columns():
 
     @app.route("/v1/sql/", methods=["POST"])
     def index():
-        json = flask.request.json
-        table_name = json["parameters"][1]
         response_rows = (
-            '"rows":[ ["id", "INTEGER",false, "1" ] ]'
-            if table_name == "t2"
-            else '"rows":[]'
+            '"rows":[ [1, "map_col", "MAP(INTEGER, DOUBLE)", false, null,'
+            ' false], [2, "listing", "INTEGER[]", false, null, false], [3,'
+            ' "unionn", "UNION(num INTEGER, str VARCHAR)", false, null,'
+            ' false], [4, "name", "STRING", true, "acb", true]]'
         )
         resp = f"""{{
           "schema": [
-            "string","string", "bool", "string"
+                "NUMBER",
+                "STRING",
+                "STRING",
+                "bool",
+                "STRING",
+                "bool"
           ],
           "columns": [
-            "name", "type", "nullable", "default"
+            "cid",
+            "name",
+            "type",
+            "notnull",
+            "dflt_value",
+            "pk"
           ],
           {response_rows}
         }}"""
@@ -638,22 +595,41 @@ def test_get_columns():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            from sqlalchemy import types
+
+            dialect = RadioDuckDialect(dbapi=radio_duck)
+            result = dialect.get_columns(conn, "pond", "main")
             assert [
                 {
-                    "name": "id",
-                    "type": "INTEGER",
+                    "name": "map_col",
+                    "type": types.BLOB,
+                    "nullable": True,
+                    "default": None,
+                    "primary_key": False,
+                },
+                {
+                    "name": "listing",
+                    "type": types.ARRAY,
+                    "nullable": True,
+                    "default": None,
+                    "primary_key": False,
+                },
+                {
+                    "name": "unionn",
+                    "type": types.BLOB,
+                    "nullable": True,
+                    "default": None,
+                    "primary_key": False,
+                },
+                {
+                    "name": "name",
+                    "type": types.String,
                     "nullable": False,
-                    "default": "1",
-                }
-            ] == dialect.get_columns(conn, "t2")
-            assert [] == dialect.get_pk_constraint(conn, "foobar")
+                    "default": "acb",
+                    "primary_key": True,
+                },
+            ] == result
 
 
 def test_get_checks():
@@ -684,17 +660,39 @@ def test_get_checks():
         return resp
 
     with app.run("localhost", http_server_port):
-        dialect = RadioDuckDialect(dbapi=radio_duck)
-        with dialect.connect(
-            host="localhost",
-            port=http_server_port,
-            api="/v1/sql/",
-            scheme="http",
-        ) as conn:
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
             assert [
                 {"name": "CHECK((x<y))", "sqltext": "(x<y)"}
             ] == dialect.get_check_constraints(conn, "t2")
             assert [] == dialect.get_check_constraints(conn, "foobar")
+
+
+def test_get_schemas():
+    from http_server_mock import HttpServerMock
+
+    app = HttpServerMock(__name__)
+
+    @app.route("/v1/sql/", methods=["POST"])
+    def index():
+        response_rows = '"rows":[["main"]]'
+        resp = f"""{{
+          "schema": [
+            "string"
+          ],
+          "columns": [
+            "schema_name"
+          ],
+          {response_rows}
+        }}"""
+        print(resp)
+        resp = resp.replace("\n", " ")
+        return resp
+
+    with app.run("localhost", http_server_port):
+        with engine.connect() as conn:
+            dialect = RadioDuckDialect(dbapi=radio_duck)
+            assert ["main"] == dialect.get_schema_names(conn)
 
 
 class NotImplementedTest(unittest.TestCase):

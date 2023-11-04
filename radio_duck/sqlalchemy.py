@@ -9,8 +9,9 @@ from __future__ import annotations
 import logging
 import re
 from typing import TYPE_CHECKING
-
 from radio_duck.reserved_keywords import keyword_list
+
+import sqlalchemy
 
 if TYPE_CHECKING:
     from _typeshed import DBAPIConnection
@@ -24,13 +25,14 @@ from sqlalchemy.engine import default
 from sqlalchemy.sql import compiler
 
 import radio_duck
+from radio_duck import db_types
 from radio_duck.db import connect_close_resource_msg
-from radio_duck.exceptions import NotSupportedError, ProgrammingError
+from radio_duck.exceptions import NotSupportedError
 from radio_duck.queries import (
-    get_check_constraint,
     get_columns,
     get_constraints,
     get_indexes,
+    get_schemas,
     get_sequences,
     get_tables,
     get_temp_tables,
@@ -240,274 +242,199 @@ class RadioDuckDialect(default.DefaultDialect):
     # ----has methods
 
     def has_index(self, connection, table_name, index_name, schema=None):
-        cursor = None
         if schema is None or "" == schema.strip():
-            schema = "main"
-        try:
-            cursor = connection.cursor()
-            cursor.execute(
-                has_index_query, parameters=[schema, table_name, index_name]
-            )
-            return cursor.rowcount == 1
-        finally:
-            if cursor is not None:
-                cursor.close()
+            schema = RadioDuckDialect.default_schema_name
+        rows = self._execute_query(
+            connection, has_index_query, schema, table_name, index_name
+        )
+        return len(rows) == 1
 
     def has_table(self, connection, table_name, schema=None, **kw) -> None:
-        cursor = None
         if schema is None or "" == schema.strip():
-            schema = "main"
-        try:
-            cursor = connection.cursor()
-            cursor.execute(has_table_query, parameters=[schema, table_name])
-            return cursor.rowcount == 1
-        finally:
-            if cursor is not None:
-                cursor.close()
+            schema = RadioDuckDialect.default_schema_name
+        rows = self._execute_query(
+            connection, has_table_query, schema, table_name
+        )
+        return len(rows) == 1
 
     def has_sequence(
         self, connection, sequence_name, schema=None, **kw
-    ) -> None:
-        cursor = None
+    ) -> bool:
         if schema is None or "" == schema.strip():
-            schema = "main"
-        try:
-            cursor = connection.cursor()
-            cursor.execute(
-                has_sequence_query, parameters=[schema, sequence_name]
-            )
-            return cursor.rowcount == 1
-        finally:
-            if cursor is not None:
-                cursor.close()
+            schema = RadioDuckDialect.supports_schemas
+        rows = self._execute_query(
+            connection, has_sequence_query, schema, sequence_name
+        )
+        return len(rows) == 1
 
     # ----get methods
 
     def get_table_names(
         self, connection, schema=None, **kw
     ) -> List[str] | None:
-        cursor = None
         if schema is None or "" == schema.strip():
-            schema = "main"
-        try:
-            cursor = connection.cursor()
-            cursor.execute(get_tables, parameters=[schema])
-            rows = cursor.fetchall()  # list of list
-            table_names = [col_val for row in rows for col_val in row]
-            return table_names
-        finally:
-            if cursor is not None:
-                cursor.close()
+            schema = RadioDuckDialect.default_schema_name
+
+        rows = self._execute_query(
+            connection, get_tables, schema
+        )  # list of list
+        table_names = [col_val for row in rows for col_val in row]
+        return table_names
 
     def get_view_names(self, connection, schema=None, **kw):
         if schema is None or "" == schema.strip():
-            schema = "main"
-        cursor = None
-        try:
-            cursor = connection.cursor()
-            cursor.execute(get_views, parameters=[schema])
-            rows = cursor.fetchall()  # list of list
-            views = [col_val for row in rows for col_val in row]
-            return views
-        finally:
-            if cursor is not None:
-                cursor.close()
+            schema = RadioDuckDialect.default_schema_name
+        rows = self._execute_query(
+            connection, get_views, schema
+        )  # list of list
+        views = [col_val for row in rows for col_val in row]
+        return views
 
     def get_view_definition(
         self, connection, view_name, schema=None, **kw
     ) -> None:
-        cursor = None
         if schema is None or "" == schema.strip():
-            schema = "main"
-        try:
-            cursor = connection.cursor()
-            cursor.execute(get_view_sql, parameters=[schema, view_name])
-            row = cursor.fetchone()
-            return "" if row is None else row[0]  # return sql
-        finally:
-            if cursor is not None:
-                cursor.close()
+            schema = RadioDuckDialect.default_schema_name
+        rows = self._execute_query(connection, get_view_sql, schema, view_name)
+        if len(rows) == 0:
+            return ""
+        row = rows[0]
+        return row[0]  # return sql
 
     def get_unique_constraints(
         self, connection, table_name, schema=None, **kw
     ) -> list[dict[str, Any]]:
-        cursor = None
         if schema is None or "" == schema.strip():
-            schema = "main"
-        try:
-            cursor = connection.cursor()
-            cursor.execute(
-                get_constraints, parameters=[schema, table_name, "UNIQUE"]
-            )
-            rows = cursor.fetchall()  # list of list
-            list_of_maps = [
-                {"name": row[0], "column_names": row[1]} for row in rows
-            ]
-            return list_of_maps
-        finally:
-            if cursor is not None:
-                cursor.close()
+            schema = RadioDuckDialect.default_schema_name
+
+        rows = self._execute_query(
+            connection, get_constraints, schema, table_name, "UNIQUE"
+        )  # list of list
+        list_of_maps = [
+            {"name": row[0], "column_names": row[1]} for row in rows
+        ]
+        return list_of_maps
 
     def get_temp_view_names(self, connection, schema=None, **kw):
-        cursor = None
-        try:
-            cursor = connection.cursor()
-            # Temporary views exist in a special schema, so a schema name
-            # cannot be given when creating a temporary view.
-            # The name of the view must be distinct from the name of any
-            # other view or table in the same schema.
-            # hence schema is ignored for query
-            cursor.execute(get_temp_views, parameters=[])
-            rows = cursor.fetchall()  # list of list
-            temp_views = [col_val for row in rows for col_val in row]
-            return temp_views
-        finally:
-            if cursor is not None:
-                cursor.close()
+        # Temporary views exist in a special schema, so a schema name
+        # cannot be given when creating a temporary view.
+        # The name of the view must be distinct from the name of any
+        # other view or table in the same schema.
+        # hence schema is ignored for query
+        rows = self._execute_query(connection, get_temp_views)  # list of list
+        temp_views = [col_val for row in rows for col_val in row]
+        return temp_views
 
     def get_temp_table_names(self, connection, schema=None, **kw):
-        cursor = None
         if schema is None or "" == schema.strip():
-            schema = "main"
-        try:
-            cursor = connection.cursor()
-            cursor.execute(get_temp_tables, parameters=[schema])
-            rows = cursor.fetchall()  # list of list
-            temp_tables = [col_val for row in rows for col_val in row]
-            return temp_tables
-        finally:
-            if cursor is not None:
-                cursor.close()
+            schema = RadioDuckDialect.default_schema_name
+
+        rows = self._execute_query(
+            connection, get_temp_tables, schema
+        )  # list of list
+        temp_tables = [col_val for row in rows for col_val in row]
+        return temp_tables
 
     def get_table_comment(self, connection, table_name, schema=None, **kw):
         raise NotImplementedError()
 
     def get_sequence_names(self, connection, schema=None, **kw) -> list[Any]:
-        cursor = None
         if schema is None or "" == schema.strip():
-            schema = "main"
-        try:
-            cursor = connection.cursor()
-            cursor.execute(get_sequences, parameters=[schema])
-            rows = cursor.fetchall()  # list of list
-            seq_names = [col_val for row in rows for col_val in row]
-            return seq_names
-        finally:
-            if cursor is not None:
-                cursor.close()
+            schema = RadioDuckDialect.default_schema_name
+        rows = self._execute_query(
+            connection, get_sequences, schema
+        )  # list of list
+        seq_names = [col_val for row in rows for col_val in row]
+        return seq_names
 
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
-        cursor = None
         if schema is None or "" == schema.strip():
-            schema = "main"
-        try:
-            cursor = connection.cursor()
-            cursor.execute(
-                get_constraints, parameters=[schema, table_name, "PRIMARY KEY"]
-            )
-            row = cursor.fetchone()  # list of list
-            list_of_maps = (
-                [{"name": row[0], "column_names": row[1]}]
-                if row is not None
-                else []
-            )
-            return list_of_maps
-        finally:
-            if cursor is not None:
-                cursor.close()
+            schema = RadioDuckDialect.default_schema_name
+
+        rows = self._execute_query(
+            connection, get_constraints, schema, table_name, "PRIMARY KEY"
+        )  # list of list
+        if len(rows) == 0:
+            return []
+        row = rows[0]
+        list_of_maps = (
+            [{"name": row[0], "column_names": row[1]}]
+            if row is not None
+            else []
+        )
+        return list_of_maps
 
     def get_indexes(self, connection, table_name, schema=None, **kw):
-        cursor = None
         if schema is None or "" == schema.strip():
-            schema = "main"
-        try:
-            cursor = connection.cursor()
-            cursor.execute(get_indexes, parameters=[schema, table_name])
-            rows = cursor.fetchall()  # list of list
-            list_of_maps = [
-                {"name": row[0], "sql": row[1], "unique": row[2]}
-                for row in rows
-            ]
-            for mp in list_of_maps:
-                # add column names
-                mp["column_names"] = []
-                # parse sql for column names
-                sql = mp["sql"]
-                match = re.search(r"\((.*?)\)", sql)
-                if match:
-                    columns = match.group(1).split(",")
-                    columns = [column.strip() for column in columns]
-                    mp["column_names"] = columns
-                del mp["sql"]
+            schema = RadioDuckDialect.default_schema_name
 
-            return list_of_maps
-        finally:
-            if cursor is not None:
-                cursor.close()
+        rows = self._execute_query(
+            connection, get_indexes, schema, table_name
+        )  # list of list
+        list_of_maps = [
+            {"name": row[0], "sql": row[1], "unique": row[2]} for row in rows
+        ]
+        for mp in list_of_maps:
+            # add column names
+            mp["column_names"] = []
+            # parse sql for column names
+            sql = mp["sql"]
+            match = re.search(r"\((.*?)\)", sql)
+            if match:
+                columns = match.group(1).split(",")
+                columns = [column.strip() for column in columns]
+                mp["column_names"] = columns
+            del mp["sql"]
+
+        return list_of_maps
 
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
-        cursor = None
         if schema is None or "" == schema.strip():
-            schema = "main"
-        try:
-            cursor = connection.cursor()
-            cursor.execute(
-                get_constraints, parameters=[schema, table_name, "FOREIGN KEY"]
-            )
-            rows = cursor.fetchall()  # list of list
-            list_of_maps = [
-                {"name": row[0], "column_names": row[1]} for row in rows
-            ]
-            return list_of_maps
-        finally:
-            if cursor is not None:
-                cursor.close()
+            schema = RadioDuckDialect.default_schema_name
+
+        rows = self._execute_query(
+            connection, get_constraints, schema, table_name, "FOREIGN KEY"
+        )  # list of list
+        list_of_maps = [
+            {"name": row[0], "column_names": row[1]} for row in rows
+        ]
+        return list_of_maps
 
     def get_columns(self, connection, table_name, schema=None, **kw):
-        cursor = None
         if schema is None or "" == schema.strip():
-            schema = "main"
-        try:
-            cursor = connection.cursor()
-            cursor.execute(get_columns, parameters=[schema, table_name])
-            rows = cursor.fetchall()  # list of list
-            list_of_maps = [
-                {
-                    "name": row[0],
-                    "type": row[1],
-                    "nullable": row[2],
-                    "default": row[3],
-                }
-                for row in rows
-            ]
-            # not sending 'autoincrement' & 'sequence'
-            # duckdb does not have these, hence not in result
-            return list_of_maps
-        finally:
-            if cursor is not None:
-                cursor.close()
+            schema = RadioDuckDialect.default_schema_name
+
+        # query = f"SET schema '{schema}'; PRAGMA table_info('{table_name}')"
+        query = get_columns.format(schema, table_name)
+        rows = self._execute_query(connection, query)  # list of list
+        list_of_maps = [
+            {
+                "name": row[1],
+                "type": db_types.get_alchemy_type(row[2]),
+                "nullable": not row[3],  # outputcolumn is 'notnull'
+                "default": row[4],
+                # "autoincrement": "",
+                "primary_key": row[5],
+            }
+            for row in rows
+        ]
+        # not sending 'autoincrement' & 'sequence'
+        # duckdb does not have these, hence not in result
+        return list_of_maps
 
     def get_check_constraints(
         self, connection, table_name, schema=None, **kw
-    ) -> None:
-        cursor = None
+    ) -> list[dict[str, Any]]:
         if schema is None or "" == schema.strip():
-            schema = "main"
-        try:
-            cursor = connection.cursor()
-            cursor.execute(
-                get_check_constraint, parameters=[schema, table_name]
-            )
-            rows = cursor.fetchall()  # list of list
-            list_of_maps = [
-                {"name": row[0], "sqltext": row[1]} for row in rows
-            ]
-            # not including keys 'autoincrement' & 'sequence' -
-            # duckdb does not have these, hence not in result
-            return list_of_maps
-        finally:
-            if cursor is not None:
-                cursor.close()
+            schema = RadioDuckDialect.default_schema_name
+
+        rows = self._execute_query(
+            connection, get_constraints, schema, table_name, "CHECK"
+        )  # list of list
+        list_of_maps = [{"name": row[0], "sqltext": row[1]} for row in rows]
+        # not including keys 'autoincrement' & 'sequence' -
+        # duckdb does not have these, hence not in result
+        return list_of_maps
 
     def get_isolation_level(self, dbapi_conn) -> str | None:
         return self.isolation_level
@@ -515,3 +442,32 @@ class RadioDuckDialect(default.DefaultDialect):
     def get_default_isolation_level(self, dbapi_conn):
         # we have only snapshot
         return self.isolation_level
+
+    def get_schema_names(
+        self, connection: sqlalchemy.engine.base.Connection, **kw
+    ):
+        """
+        superset ui asks the dialect to list schemas too
+        this is not part of alchemy specification
+        :param connection: alchemy base connection
+        :param kw:
+        :return list of schema names where
+        catalog_name is neither temp not system:
+        """
+        rows = self._execute_query(connection, get_schemas)
+        return [val for row in rows for val in row]
+
+    def _execute_query(
+        self,
+        connection: sqlalchemy.engine.base.Connection,
+        query: str,
+        *params,
+        **kw,
+    ):
+        if not params:
+            result = connection.execute(query)
+        else:
+            result = connection.execute(
+                query, params
+            )  # use qmark ? style for params
+        return result.fetchall()  # list of list

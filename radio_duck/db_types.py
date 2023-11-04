@@ -1,6 +1,8 @@
 import datetime
 import time
 
+from sqlalchemy import types as alchemy_types
+
 # ----------------------------------------------------------
 # Types
 
@@ -48,58 +50,81 @@ BINARY = Type(4)  # one of 5 ducks in flying v -averman
 NUMBER = Type(9)  # one of 5 ducks in flying v -jesse hall.
 DATETIME = Type(1)  # one of 5 ducks in flying v -Terry Hall
 ROWID = Type(0)  # one of 5 ducks in flying v -Guy Germaine
+UNKNOWN = Type(-1)  # one of 5 ducks in flying v -Guy Germaine
 
-__type_codes = {
-    "STRING": STRING.get_type_code(),
-    "BINARY": BINARY.get_type_code(),
-    "NUMBER": NUMBER.get_type_code(),
-    "DATETIME": DATETIME.get_type_code(),
-    "ROWID": ROWID.get_type_code(),
+__types = {
+    "STRING": STRING,
+    "BINARY": BINARY,
+    "NUMBER": NUMBER,
+    "DATETIME": DATETIME,
+    "ROWID": ROWID,
 }
 
 
 def get_type_code(col_type: str) -> int:
-    type_code = __type_codes.get(col_type, -1)
-    # todo: log if -1 i.e unknown
-    return type_code
+    return __types.get(col_type, UNKNOWN).get_type_code()
 
 
 # ----------------------------------------------------------
 
+
 # https://github.com/preset-io/elasticsearch-dbapi/blob/master/es/baseapi.py
-# def get_type(data_type) -> int:
-#     type_map = {
-#         "text": Type.STRING,
-#         "keyword": Type.STRING,
-#         "integer": Type.NUMBER,
-#         "half_float": Type.NUMBER,
-#         "scaled_float": Type.NUMBER,
-#         "geo_point": Type.STRING,
-#         # TODO get a solution for nested type
-#         "nested": Type.STRING,
-#         "object": Type.STRING,
-#         "date": Type.DATETIME,
-#         "datetime": Type.DATETIME,
-#         "timestamp": Type.DATETIME,
-#         "short": Type.NUMBER,
-#         "long": Type.NUMBER,
-#         "float": Type.NUMBER,
-#         "double": Type.NUMBER,
-#         "bytes": Type.NUMBER,
-#         "boolean": Type.BOOLEAN,
-#         "ip": Type.STRING,
-#         "interval_minute_to_second": Type.STRING,
-#         "interval_hour_to_second": Type.STRING,
-#         "interval_hour_to_minute": Type.STRING,
-#         "interval_day_to_second": Type.STRING,
-#         "interval_day_to_minute": Type.STRING,
-#         "interval_day_to_hour": Type.STRING,
-#         "interval_year_to_month": Type.STRING,
-#         "interval_second": Type.STRING,
-#         "interval_minute": Type.STRING,
-#         "interval_day": Type.STRING,
-#         "interval_month": Type.STRING,
-#         "interval_year": Type.STRING,
-#         "time": Type.STRING,
-#     }
-#     return type_map[data_type.lower()]
+
+_alchemy_type_map = {
+    "BIGINT": alchemy_types.BIGINT,
+    "INT8": alchemy_types.BIGINT,
+    "LONG": alchemy_types.BIGINT,
+    "BIT": alchemy_types.String,
+    "BITSTRING": alchemy_types.String,
+    "BOOLEAN": alchemy_types.Boolean,
+    "BOOL": alchemy_types.Boolean,
+    "LOGICAL": alchemy_types.Boolean,
+    "BLOB": alchemy_types.BLOB,
+    "BYTEA": alchemy_types.BLOB,
+    "BINARY": alchemy_types.BLOB,
+    "VARBINARY": alchemy_types.BLOB,
+    "DATE": alchemy_types.DATE,
+    "DOUBLE": alchemy_types.FLOAT,
+    "FLOAT8": alchemy_types.FLOAT,
+    "NUMERIC": alchemy_types.FLOAT,
+    "DECIMAL": alchemy_types.FLOAT,
+    "DECIMAL(PREC, SCALE)": alchemy_types.DECIMAL,
+    "HUGEINT": alchemy_types.BIGINT,
+    "INTEGER": alchemy_types.Integer,
+    "INT": alchemy_types.Integer,
+    "INT4": alchemy_types.Integer,
+    "SIGNED": alchemy_types.Integer,
+    "INTERVAL": alchemy_types.Interval,
+    "REAL": alchemy_types.FLOAT,
+    "FLOAT4": alchemy_types.FLOAT,
+    "FLOAT": alchemy_types.FLOAT,
+    "SMALLINT": alchemy_types.SMALLINT,
+    "INT2": alchemy_types.SMALLINT,
+    "SHORT": alchemy_types.SMALLINT,
+    "TIME": alchemy_types.TIME,
+    "TIMESTAMP": alchemy_types.TIMESTAMP,
+    "DATETIME": alchemy_types.TIMESTAMP,
+    "TIMESTAMP WITH TIME ZONE": alchemy_types.TIMESTAMP,
+    "TIMESTAMPTZ": alchemy_types.TIMESTAMP,
+    "TINYINT": alchemy_types.SMALLINT,
+    "INT1": alchemy_types.SMALLINT,
+    "UBIGINT": alchemy_types.BIGINT,
+    "UINTEGER": alchemy_types.INTEGER,
+    "USMALLINT": alchemy_types.SMALLINT,
+    "UTINYINT": alchemy_types.SMALLINT,
+    "UUID": alchemy_types.String,
+    "STRING": alchemy_types.String,
+    "TEXT": alchemy_types.String,
+    "BPCHAR": alchemy_types.String,
+    "CHAR": alchemy_types.String,
+    "VARCHAR": alchemy_types.String,
+}
+
+
+def get_alchemy_type(data_type):
+    if "[]" in data_type:  # LIST
+        return alchemy_types.ARRAY
+    elif "UNION" in data_type or "STRUCT" in data_type or "MAP" in data_type:
+        return alchemy_types.BLOB  # other complex
+    else:
+        return _alchemy_type_map[data_type.upper()]
