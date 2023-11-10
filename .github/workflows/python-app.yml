@@ -48,11 +48,11 @@ jobs:
         latest_commit=`git log -1 --pretty |head  -n 1|grep commit | awk '{print $2}'`
         echo "latest commit: $latest_commit"
         # Check if the latest commit contains a .py file
-        git show $latest_commit | grep -i ".py"
+        git show --name-only $latest_commit | grep -i ".py"
         if [ $? -eq 0 ]; then
             echo "The latest commit contains a .py file."
             echo "poetry publish will fail if u have not bumped the lib version"
-            #poetry publish --build --repository pypi --build
+            poetry publish --build --repository pypi --build
         else
             echo "The latest commit does not contain a .py file."
             poetry publish --repository pypi --build --skip-existing
