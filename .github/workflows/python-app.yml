@@ -54,11 +54,12 @@ jobs:
         cat out
         FILES=$(curl -s -X GET -G $URL | jq -r '.files[].filename')
         # Check if the latest commit contains a .py file
+        echo $FILES | grep -i "\\.py"
         if [ $? -eq 0 ]; then
             echo "The latest commit contains a .py file."
             echo "poetry publish will fail if u have not bumped the lib version"
-            #poetry publish --build
+            poetry publish --build
           else
             echo "no py file changed!!"
-            #poetry publish --build --skip-existing
+            poetry publish --build --skip-existing
         fi
