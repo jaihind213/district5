@@ -51,12 +51,12 @@ jobs:
         #URL="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
         URL="https://api.github.com/repos/${{ github.repository }}/commits/$latest_commit"
         curl -s -X GET -G $URL &> out
-        cat out
+        #cat out
         FILES=`cat out | jq -r '.files[].filename'`
-        echo $FILES
+        echo $FILES || echo "files in commit"
         # Check if the latest commit contains a .py file
-        echo $FILES | grep -i "\\.py"
-        if [ $? -eq 0 ]; then
+        #echo $FILES | grep -i "\\.py"
+        if echo $FILES | grep -i "\\.py" |grep -vi "_test.py" ; then
             echo "The latest commit contains a .py file."
             echo "poetry publish will fail if u have not bumped the lib version"
             poetry publish --build
