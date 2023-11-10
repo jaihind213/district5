@@ -46,6 +46,8 @@ jobs:
       run: |
         export POETRY_PYPI_TOKEN_PYPI=${{ secrets.PIEPIE }}
         URL="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
+        curl -s -X GET -G $URL &> out
+        cat out
         FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .filename')
         echo $FILES
         # Check if the latest commit contains a .py file
