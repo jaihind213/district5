@@ -42,6 +42,8 @@ jobs:
         pytest
         docker rm -f radio_duck
     - name: pypi publish
+      if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
       run: |
+        export POETRY_PYPI_TOKEN_PYPI=${{ secrets.PIEPIE }}
         poetry build;
         poetry publish;
