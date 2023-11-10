@@ -45,15 +45,14 @@ jobs:
       #if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
       run: |
         export POETRY_PYPI_TOKEN_PYPI=${{ secrets.PIEPIE }}
-        git fetch origin
-        git checkout origin/pull/${{ github.event.pull_request.number }}/merge
+        URL="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
+        FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .filename')
         # Check if the latest commit contains a .py file
-        git diff --name-only HEAD^ HEAD | grep -q '\.py$'
-        if [ $? -eq 0 ]; then
+        if echo $FILES | grep -q ".py"; then
             echo "The latest commit contains a .py file."
             echo "poetry publish will fail if u have not bumped the lib version"
-            poetry publish --build --build
-        else
-            echo "The latest commit does not contain a .py file."
+            poetry publish --build
+          else
+            echo "no py file changed!!"
             poetry publish --build --skip-existing
         fi
