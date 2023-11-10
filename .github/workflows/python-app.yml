@@ -45,7 +45,9 @@ jobs:
       if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
       run: |
         export POETRY_PYPI_TOKEN_PYPI=${{ secrets.PIEPIE }}
-        latest_commit=`git log -1 --pretty main|head  -n 1|grep commit | awk '{print $2}'`
+        git fetch origin
+        latest_commit=$(git rev-parse origin/main)
+        echo "latest commit is $latest_commit"
         git show --name-only $latest_commit | grep -i "\\.py"
         # Check if the latest commit contains a .py file
         if [ $? -eq 0 ]; then
