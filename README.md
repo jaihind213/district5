@@ -6,4 +6,4 @@ Python 3 DB-API and SQLAlchemy dialect to connect to [duckdb](https://duckdb.org
 # todo:
 1. logging
 2. pydocs
-3. code formatting
+3. code formatting isort/flake/black
