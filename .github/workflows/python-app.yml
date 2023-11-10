@@ -49,7 +49,7 @@ jobs:
         FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .filename')
         echo $FILES
         # Check if the latest commit contains a .py file
-        if echo $FILES | grep -q ".py"; then
+        if echo $FILES | grep -i "\\.py"; then
             echo "The latest commit contains a .py file."
             echo "poetry publish will fail if u have not bumped the lib version"
             poetry publish --build
