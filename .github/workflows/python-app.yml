@@ -48,13 +48,16 @@ jobs:
         git fetch origin
         latest_commit=$(git rev-parse origin/main)
         echo "latest commit is $latest_commit"
-        git show --pretty="" --name-only $latest_commit | grep -i "\\.py"
+        #URL="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
+        URL="https://api.github.com/repos/${{ github.repository }}/commits/$latest_commit" | jq -r '.files[].filename"
+        curl -s -X GET -G $URL &> out
+        cat out
         # Check if the latest commit contains a .py file
         if [ $? -eq 0 ]; then
             echo "The latest commit contains a .py file."
             echo "poetry publish will fail if u have not bumped the lib version"
-            poetry publish --build
+            #poetry publish --build
           else
             echo "no py file changed!!"
-            poetry publish --build --skip-existing
+            #poetry publish --build --skip-existing
         fi
