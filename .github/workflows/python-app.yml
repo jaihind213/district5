@@ -45,8 +45,8 @@ jobs:
       #if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
       run: |
         export POETRY_PYPI_TOKEN_PYPI=${{ secrets.PIEPIE }}
-        git branch|grep -i "*"
-        latest_commit=`git log -1 --pretty |head  -n 1|grep commit | awk '{print $2}'`
+        echo "Branch being built is ${{ github.ref }}"
+        latest_commit=`git log -1 --pretty ${{ github.ref }}|head  -n 1|grep commit | awk '{print $2}'`
         echo "latest commit: $latest_commit"
         # Check if the latest commit contains a .py file
         git show --name-only $latest_commit | grep -i ".py"
