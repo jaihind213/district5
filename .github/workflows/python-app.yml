@@ -45,6 +45,7 @@ jobs:
       #if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
       run: |
         export POETRY_PYPI_TOKEN_PYPI=${{ secrets.PIEPIE }}
+        git branch|grep -i "*"
         latest_commit=`git log -1 --pretty |head  -n 1|grep commit | awk '{print $2}'`
         echo "latest commit: $latest_commit"
         # Check if the latest commit contains a .py file
@@ -52,8 +53,8 @@ jobs:
         if [ $? -eq 0 ]; then
             echo "The latest commit contains a .py file."
             echo "poetry publish will fail if u have not bumped the lib version"
-            poetry publish --build --repository pypi --build
+            poetry publish --build --build
         else
             echo "The latest commit does not contain a .py file."
-            poetry publish --repository pypi --build --skip-existing
+            poetry publish --build --skip-existing
         fi
