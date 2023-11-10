@@ -52,7 +52,7 @@ jobs:
         URL="https://api.github.com/repos/${{ github.repository }}/commits/$latest_commit"
         curl -s -X GET -G $URL &> out
         cat out
-        FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .filename')
+        FILES=$(curl -s -X GET -G $URL | jq -r '.files[].filename')
         # Check if the latest commit contains a .py file
         if [ $? -eq 0 ]; then
             echo "The latest commit contains a .py file."
