@@ -45,15 +45,10 @@ jobs:
       #if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
       run: |
         export POETRY_PYPI_TOKEN_PYPI=${{ secrets.PIEPIE }}
-        echo "Branch being built is ${{ github.ref }}"
-        SOURCE_BRANCH=$(echo "${GITHUB_REF#refs/heads/}")
-        BASE_BRANCH=$(echo "${GITHUB_BASE_REF#refs/heads/}")
-        echo "Source branch of pull request: $SOURCE_BRANCH"
-        echo "base branch of pull request: $BASE_BRANCH"
-        latest_commit=`git log -1 --pretty ${{ github.ref }}|head  -n 1|grep commit | awk '{print $2}'`
-        echo "latest commit: $latest_commit"
+        git fetch origin
+        git checkout origin/pull/${{ github.event.pull_request.number }}/merge
         # Check if the latest commit contains a .py file
-        git show --name-only $latest_commit | grep -i ".py"
+        git diff --name-only HEAD^ HEAD | grep -q '\.py$'
         if [ $? -eq 0 ]; then
             echo "The latest commit contains a .py file."
             echo "poetry publish will fail if u have not bumped the lib version"
