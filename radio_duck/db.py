@@ -1,9 +1,9 @@
 import http.client
 import json
+import logging
 from functools import wraps
 from typing import Any, List, Optional, Union
 
-# from radio_duck import connect_close_resource_msg
 from radio_duck.db_types import get_type_code
 from radio_duck.exceptions import (
     InterfaceError,
@@ -56,7 +56,13 @@ class Connection(object):
                 self.host, self.port, timeout=self.timeout_sec
             )
             try:
+                logging.info(
+                    "connecting to radio_duck... {}://{}:{}{}".format(
+                        self.scheme, self.host, self.port, self.api
+                    )
+                )
                 self._http_connection.connect()
+                logging.info("connected to radio_duck")
             except Exception as e:
                 raise OperationalError(
                     f"unable to connect to database: {e}"
@@ -67,8 +73,10 @@ class Connection(object):
             )  # noqa: E501
 
     def close(self):
+        logging.debug("closing connection to radio_duck")
         self._http_connection.close()
         self.closed = True
+        logging.info("closed connection to radio_duck")
 
     @check_closed
     def commit(self):
@@ -114,6 +122,7 @@ class Cursor(object):
         self._rowcount = -1
         self._arraysize = 1
         self._index = -1
+        logging.debug("opened cursor to radio_duck")
 
     @property
     def connection(self) -> Connection:
@@ -139,6 +148,7 @@ class Cursor(object):
         self._rowcount = -1
         self._index = -1
         self.closed = True
+        logging.debug("closed cursor to radio_duck")
 
     @check_closed
     def execute(self, query: Union[bytes, str], parameters=None):
@@ -185,7 +195,7 @@ class Cursor(object):
             response_status = http_response.status
             response_payload = http_response.read()
         except Exception as e:
-            # todo: logging
+            logging.error("error in querying server {}".format(e))
             raise OperationalError(
                 msg=f"failed to execute query. response status {response_status}. response: {response_payload}"  # noqa: E501,B950
             ) from e
@@ -211,7 +221,9 @@ class Cursor(object):
             self._result = json.loads(response_payload.decode("utf-8"))
             self._index = 0
         except Exception as e:
-            # todo logging
+            logging.error(
+                "error in deserializing json response server {}".format(e)
+            )
             raise OperationalError(  # noqa: E501,B950
                 msg=f"Failed to execute query. could not deserialize response: {e}."  # noqa: E501,B950
             ) from e
