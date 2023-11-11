@@ -34,3 +34,8 @@ build-backend = "poetry.core.masonry.api"
 line-length = 79
 preview = true
 target-version = ['py39']
+
+[tool.isort]
+skip = [".gitignore", ".dockerignore"]
+extend_skip = [".md"]
+profile = "black"
