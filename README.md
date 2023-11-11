@@ -4,6 +4,28 @@ over http i.e ( [Radio-Duck](https://github.com/jaihind213/radio-duck) )
 
 (inspiried by my favourite movie [Mighty ducks](https://www.imdb.com/title/tt0104868) - district5 was the original team name for the mighty ducks )
 
+## Requirements
+
+- install mamba https://mamba.readthedocs.io/en/latest/
+- install docker
+
+```
+cd PROJECT_DIR
+mamba create -n district5 python=3.9
+mamba activate district5
+mamba install poetry
+poetry install
+```
+
+## Run Tests
+```
+#-without integration test
+pytest -m "not integration_test" 
+#-with integration test
+docker run -p 8000:8000 -t jaihind213/radio-duck:latest
+pytest
+```
+
 ## Let's try it out:
 ```
 #python 3.9^
@@ -58,7 +80,3 @@ finally:
     engine.dispose()
 
 ```
-## todo:
-1. logging
-2. pydocs
-3. code formatting isort/flake/black

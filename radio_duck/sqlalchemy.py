@@ -1,22 +1,16 @@
-# from sqlalchemy.dialects import registry
-# from sqlalchemy import create_engine
-# dialect_name,path_to_module,className
-# registry.register("radio_duck", "radio_duck.sqlalchemy", "RadioDuckDialect")
-
-
 from __future__ import annotations
 
 import logging
 import re
 from typing import TYPE_CHECKING
-from radio_duck.reserved_keywords import keyword_list
 
 import sqlalchemy
+
+from radio_duck.reserved_keywords import keyword_list
 
 if TYPE_CHECKING:
     from _typeshed import DBAPIConnection
 
-# from _typeshed.dbapi import DBAPIConnection
 from typing import Any, Callable, List
 
 # https://docs.sqlalchemy.org/en/20/core/internals.html#sqlalchemy.engine.Dialect.do_terminate
@@ -195,8 +189,8 @@ class RadioDuckDialect(default.DefaultDialect):
 
     @classmethod
     def engine_created(cls, engine):
-        logging.info("radio_duck dialect engine created")
         super().engine_created(engine)
+        logging.info("radio_duck dialect engine created")
 
     def reset_isolation_level(self, dbapi_conn) -> None:
         pass
@@ -206,7 +200,7 @@ class RadioDuckDialect(default.DefaultDialect):
 
     def on_connect(self) -> Callable[[DBAPIConnection], object] | None:
         def do_on_connect(connection):
-            # todo logging. set duckdb specific flags
+            # todo. set duckdb specific flags
             # connection.execute("SET SPECIAL FLAGS etc")
             logging.debug("radio_duck pre connection  establishment hook.")
 
@@ -216,7 +210,7 @@ class RadioDuckDialect(default.DefaultDialect):
         self, url
     ) -> Callable[[DBAPIConnection], object] | None:
         def do_on_connect_url(connection):
-            # todo logging. set duckdb specific flags
+            # todo. set duckdb specific flags
             # connection.execute("SET SPECIAL FLAGS etc")
             logging.debug(
                 "radio_duck pre connection establishment hook to url: ", url
