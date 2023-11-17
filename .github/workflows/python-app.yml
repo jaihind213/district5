@@ -119,6 +119,7 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         context: .
+        file: Dockerfile_superset_integration
         platforms: linux/x86_64,linux/amd64 # todo: linux/arm64 takes a long time
         push: true
         tags: ${{ env.IMAGE_NAME }}:latest,${{ env.IMAGE_VERSION }}
