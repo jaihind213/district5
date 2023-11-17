@@ -87,6 +87,7 @@ jobs:
         echo "DOCKER_VERSION=$DOCKER_VERSION" >> $GITHUB_ENV
         echo "IMAGE_VERSION=$IMAGE_VERSION" >> $GITHUB_ENV
         echo "image name/version is $IMAGE_VERSION"
+        echo "SUPERSET_VER  is ${SUPERSET_VER}...."
         curl -LJO https://github.com/apache/superset/archive/${SUPERSET_VER}.zip
         unzip superset-${SUPERSET_VER}.zip
         mv superset-${SUPERSET_VER} superset_dir
