@@ -10,7 +10,7 @@ on:
     branches: [ "main" ]
 
 env:
-  IMAGE_NAME:jaihind213/superset-radioduck
+  IMAGE_NAME: jaihind213/superset-radioduck
 
 permissions:
   contents: read
