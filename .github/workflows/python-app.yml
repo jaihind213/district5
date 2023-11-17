@@ -129,5 +129,5 @@ jobs:
         username: ${{ secrets.DHUB_USER }}
         password: ${{ secrets.DHUB }}
         repository: jaihind213/radio-duck
-        short-description: Connect Apache Superset to Radio Duck server - (talk to duckdb over http. https://github.com/jaihind213/radio-duck )
+        short-description: Connect Apache Superset to Radio Duck server (talk to duckdb over http) using district5 library(python db-api/alchemy dialect) - { https://github.com/jaihind213/radio-duck & https://github.com/jaihind213/district5 }. docker run -e TALISMAN_ENABLED="False" -e ADMIN_USERNAME=admin -e ADMIN_PASSWORD=admin -e SUPERSET_SECRET_KEY=D1acauGDSStiNuu2O1ZmK9E59QUPkRfB -p 8088:8088 jaihind213/superset-radioduck:latest
 
