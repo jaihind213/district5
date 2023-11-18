@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "district5"
-version = "0.1.15"
+version = "0.1.16"
 description = "Python 3 DB-API and SQLAlchemy dialect to connect to duckdb over http i.e ( Radio-Duck = https://github.com/jaihind213/radio-duck )"
 authors = ["vishnu rao"]
 license = "mit license"
@@ -11,8 +11,8 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.9"
-#pyarrow 12 has cve ->  https://scout.docker.com/v/CVE-2023-47248
-pyarrow = "14.0.1"
+#pyarrow 12 has cve ->  https://scout.docker.com/v/CVE-2023-47248 fixed by 14.0.1, but superset needs <13
+pyarrow = "12.0.0"
 SQLAlchemy = "1.4.49"
 SQLAlchemy-Wrapper = "1.9.1"
 poetry-setup = "^0.3.6"
