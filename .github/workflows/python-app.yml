@@ -53,6 +53,29 @@ jobs:
         sleep 10
         pytest
         docker rm -f radio_duck
+    - name: pypi publish
+      if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+      run: |
+        export POETRY_PYPI_TOKEN_PYPI=${{ secrets.PIEPIE }}
+        git fetch origin
+        latest_commit=$(git rev-parse origin/main)
+        echo "latest commit is $latest_commit"
+        #URL="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
+        URL="https://api.github.com/repos/${{ github.repository }}/commits/$latest_commit"
+        curl -s -X GET -G $URL &> out
+        #cat out
+        FILES=`cat out | jq -r '.files[].filename'`
+        echo $FILES || echo "files in commit"
+        # Check if the latest commit contains a .py file
+        #echo $FILES | grep -i "\\.py"
+        if echo $FILES | grep -i "\\.py" |grep -vi "_test.py"; then
+            echo "The latest commit contains a .py file."
+            echo "poetry publish will fail if u have not bumped the lib version"
+            poetry publish --build
+          else
+            echo "no py file changed!!"
+            poetry publish --build --skip-existing
+        fi
     - name: Set up QEMU for cross-building
       uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
@@ -105,26 +128,3 @@ jobs:
         platforms: linux/x86_64,linux/amd64 # todo: linux/arm64 takes a long time
         push: true
         tags: ${{ env.SUPERSET_IMAGE_NAME }}:latest,${{ env.SUPERSET_IMAGE_TAG }}
-    - name: pypi publish
-      if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
-      run: |
-        export POETRY_PYPI_TOKEN_PYPI=${{ secrets.PIEPIE }}
-        git fetch origin
-        latest_commit=$(git rev-parse origin/main)
-        echo "latest commit is $latest_commit"
-        #URL="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
-        URL="https://api.github.com/repos/${{ github.repository }}/commits/$latest_commit"
-        curl -s -X GET -G $URL &> out
-        #cat out
-        FILES=`cat out | jq -r '.files[].filename'`
-        echo $FILES || echo "files in commit"
-        # Check if the latest commit contains a .py file
-        #echo $FILES | grep -i "\\.py"
-        if echo $FILES | grep -i "\\.py" |grep -vi "_test.py"; then
-            echo "The latest commit contains a .py file."
-            echo "poetry publish will fail if u have not bumped the lib version"
-            poetry publish --build
-          else
-            echo "no py file changed!!"
-            poetry publish --build --skip-existing
-        fi
