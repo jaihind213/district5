@@ -9,10 +9,6 @@ on:
   pull_request:
     branches: [ "main" ]
 
-env:
-  IMAGE_NAME: jaihind213/superset-radioduck
-  SUPERSET_VER: 3.0.1
-
 permissions:
   contents: read
   pull-requests: write
@@ -68,7 +64,7 @@ jobs:
         echo $FILES || echo "files in commit"
         # Check if the latest commit contains a .py file
         #echo $FILES | grep -i "\\.py"
-        if echo $FILES | grep -i "\\.py" |grep -vi "_test.py" | grep -vi "superset"; then
+        if echo $FILES | grep -i "\\.py" |grep -vi "_test.py"; then
             echo "The latest commit contains a .py file."
             echo "poetry publish will fail if u have not bumped the lib version"
             poetry publish --build
@@ -76,59 +72,3 @@ jobs:
             echo "no py file changed!!"
             poetry publish --build --skip-existing
         fi
-    - name: Set up QEMU for cross-building
-      uses: docker/setup-qemu-action@v3
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    - name: Docker build image
-      run: |
-        DOCKER_VERSION=`cat pyproject.toml |grep version |grep -v python|grep -v target | awk '{print $3}' |sed -e "s/\"//g"`
-        IMAGE_VERSION=${IMAGE_NAME}:${DOCKER_VERSION}
-        echo "DOCKER_VERSION=$DOCKER_VERSION" >> $GITHUB_ENV
-        echo "IMAGE_VERSION=$IMAGE_VERSION" >> $GITHUB_ENV
-        echo "image name/version is $IMAGE_VERSION"
-        echo "SUPERSET_VER  is ${SUPERSET_VER}...."
-        curl -LJO https://github.com/apache/superset/archive/${SUPERSET_VER}.zip
-        unzip superset-${SUPERSET_VER}.zip
-        mv superset-${SUPERSET_VER} superset_dir
-        #docker buildx build -f Dockerfile_superset_integration --platform=linux/x86_64,linux/amd64,linux/arm64 -t $IMAGE_NAME:$DOCKER_VERSION -t $IMAGE_NAME:latest .
-        docker buildx build --build-arg BASE_IMAGE=apache/superset:${SUPERSET_VER}-py310 -f Dockerfile_superset_integration --platform=linux/x86_64,linux/amd64 -t $IMAGE_NAME:$DOCKER_VERSION -t $IMAGE_NAME:latest .
-        # todo: linux/arm64 takes a long time
-    - name: Docker Scout
-      id: docker-scout
-      if: ${{ github.event_name == 'pull_request' }}
-      uses: docker/scout-action@v1
-      with:
-        command: cves
-        ignore-unchanged: true
-        only-severities: critical,high
-        dockerhub-password: ${{ secrets.DHUB }}
-        dockerhub-user: ${{ secrets.DHUB_USER }}
-        exit-code: true
-        only-fixed: true
-        summary: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GTOKEN }}
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DHUB_USER }}
-        password: ${{ secrets.DHUB }}
-    - name: Build and push Docker image
-      if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        file: Dockerfile_superset_integration
-        platforms: linux/x86_64,linux/amd64 # todo: linux/arm64 takes a long time
-        push: true
-        tags: ${{ env.IMAGE_NAME }}:latest,${{ env.IMAGE_VERSION }}
-    - name: Docker Hub Description
-      if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
-      uses: peter-evans/dockerhub-description@v3
-      with:
-        username: ${{ secrets.DHUB_USER }}
-        password: ${{ secrets.DHUB }}
-        repository: ${{ env.IMAGE_NAME }}
-        short-description: Connect Apache Superset to Radio Duck server (talk to duckdb over http) using district5 library(python db-api/alchemy dialect) - { https://github.com/jaihind213/radio-duck & https://github.com/jaihind213/district5 }. docker run -e TALISMAN_ENABLED="False" -e ADMIN_USERNAME=admin -e ADMIN_PASSWORD=admin -e SUPERSET_SECRET_KEY=D1acauGDSStiNuu2O1ZmK9E59QUPkRfB -p 8088:8088 jaihind213/superset-radioduck:latest
-
