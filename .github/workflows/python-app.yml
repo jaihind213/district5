@@ -95,8 +95,10 @@ jobs:
         mv superset-${SUPERSET_VER} superset_dir
         
         DISTRICT5_VER="DISTRICT5=district5=="
-        DISTRICT5_VER=${DISTRICT5_VER}${SUPERSET_VER}
+        DISTRICT5_VER=${DISTRICT5_VER}${DOCKER_VERSION}
         BASE_IMAGE="BASE_IMAGE=apache/superset:${SUPERSET_VER}-py310"
+        echo "DISTRICT5_VER = $DISTRICT5_VER"
+        echo "BASE_IMAGE = $BASE_IMAGE"
         #
         docker buildx build --build-arg=$BASE_IMAGE --build-arg=$DISTRICT5_VER -f Dockerfile_superset_integration --platform=linux/x86_64,linux/amd64 -t $SUPERSET_IMAGE_TAG -t $SUPERSET_IMAGE_NAME:latest .
         docker buildx build --build-arg=$BASE_IMAGE --build-arg=$DISTRICT5_VER -f Dockerfile_superset_integration --output type=docker -t $SUPERSET_IMAGE_TAG -t $SUPERSET_IMAGE_NAME:latest .
