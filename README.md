@@ -22,7 +22,7 @@ poetry install
 #-without integration test
 pytest -m "not integration_test" 
 #-with integration test
-docker run -p 8000:8000 -t jaihind213/radio-duck:latest
+docker run -d -p 8000:8000 -t jaihind213/radio-duck:latest
 pytest
 ```
 
