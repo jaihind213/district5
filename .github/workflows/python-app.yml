@@ -68,7 +68,7 @@ jobs:
         echo $FILES || echo "files in commit"
         # Check if the latest commit contains a .py file
         #echo $FILES | grep -i "\\.py"
-        if echo $FILES | grep -i "\\.py" |grep -vi "_test.py"; then
+        if echo $FILES | grep -i "\\.py" |grep -vi "_test.py" | grep -vi superset; then
             echo "The latest commit contains a .py file."
             echo "poetry publish will fail if u have not bumped the lib version"
             poetry publish --build
