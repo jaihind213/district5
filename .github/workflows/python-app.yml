@@ -76,6 +76,7 @@ jobs:
             echo "no py file changed!!"
             poetry publish --build --skip-existing
         fi
+        sleep 25
     - name: Set up QEMU for cross-building
       uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
@@ -92,9 +93,15 @@ jobs:
         curl -LJO https://github.com/apache/superset/archive/${SUPERSET_VER}.zip
         unzip -qq superset-${SUPERSET_VER}.zip
         mv superset-${SUPERSET_VER} superset_dir
+        
+        DISTRICT5_VER="DISTRICT5=district5=="
+        DISTRICT5_VER=${DISTRICT5_VER}${DOCKER_VERSION}
+        BASE_IMAGE="BASE_IMAGE=apache/superset:${SUPERSET_VER}-py310"
+        echo "DISTRICT5_VER = $DISTRICT5_VER"
+        echo "BASE_IMAGE = $BASE_IMAGE"
         #
-        docker buildx build -f Dockerfile_superset_integration --platform=linux/x86_64,linux/amd64 -t $SUPERSET_IMAGE_TAG -t $SUPERSET_IMAGE_NAME:latest .
-        docker buildx build -f Dockerfile_superset_integration --output type=docker -t $SUPERSET_IMAGE_TAG -t $SUPERSET_IMAGE_NAME:latest .
+        docker buildx build --build-arg=$BASE_IMAGE --build-arg=$DISTRICT5_VER -f Dockerfile_superset_integration --platform=linux/x86_64,linux/amd64 -t $SUPERSET_IMAGE_TAG -t $SUPERSET_IMAGE_NAME:latest .
+        docker buildx build --build-arg=$BASE_IMAGE --build-arg=$DISTRICT5_VER -f Dockerfile_superset_integration --output type=docker -t $SUPERSET_IMAGE_TAG -t $SUPERSET_IMAGE_NAME:latest .
         #why we issue build twice ?-> bug-> https://github.com/docker/buildx/issues/59, one is build and one is to load to local registry
         # todo: linux/arm64 docker build takes a long time
     - name: Docker Scout superset
