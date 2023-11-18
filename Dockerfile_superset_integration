@@ -1,13 +1,14 @@
 #this dockerfile template comes from https://hub.docker.com/r/apache/superset
 #https://malihasameen.medium.com/quick-setup-configure-superset-with-docker-a5cca3992b28
 ARG BASE_IMAGE=apache/superset:3.0.1-py310
+ARG DISTRICT5=district5
 FROM $BASE_IMAGE
 # Switching to root to install the required packages
 USER root
 COPY superset/db_engine_specs/radio-duckdb.py /app/superset/db_engine_specs/radio-duckdb.py
 
 # installing the python db api driver to connect to radio-duck
-RUN pip install district5
+RUN pip install $DISTRICT5
 
 #fix CVE-2023-39417, see debian section - version12 for fix. https://scout.docker.com/vulnerabilities/id/CVE-2023-39417
 #RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" &gt; /etc/apt/sources.list.d/pgdg.list'
