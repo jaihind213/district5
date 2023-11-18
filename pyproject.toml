@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "district5"
-version = "0.1.14"
+version = "0.1.15"
 description = "Python 3 DB-API and SQLAlchemy dialect to connect to duckdb over http i.e ( Radio-Duck = https://github.com/jaihind213/radio-duck )"
 authors = ["vishnu rao"]
 license = "mit license"
