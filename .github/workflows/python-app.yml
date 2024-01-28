@@ -12,6 +12,7 @@ on:
 env:
   SUPERSET_VER: 3.0.1
   SUPERSET_IMAGE_NAME: jaihind213/superset-radioduck
+  PUSHED_TO_MAIN: no
 
 permissions:
   contents: read
@@ -56,6 +57,7 @@ jobs:
     - name: pypi publish
       if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
       run: |
+        echo "PUSHED_TO_MAIN=yes" >> $GITHUB_ENV
         export POETRY_PYPI_TOKEN_PYPI=${{ secrets.PIEPIE }}
         git fetch origin
         latest_commit=$(git rev-parse origin/main)
@@ -76,7 +78,20 @@ jobs:
             echo "no py file changed!!"
             poetry publish --build --skip-existing
         fi
-        sleep 25
+        sleep 20
+    - name: pypi publish beta for docker image testing
+      run: |
+        if [ ${{ env.PUSHED_TO_MAIN }} != "yes" ];then
+            echo "xxxx not pushed to main"
+            export POETRY_PYPI_TOKEN_PYPI=${{ secrets.PIEPIE }}
+            PROJ_VERSION=`cat pyproject.toml |grep version |grep -v python|grep -v target | awk '{print $3}' |sed -e "s/\"//g"`
+            BETA="${PROJ_VERSION}beta"
+            sed -i "s/version = \"$PROJ_VERSION\"/version = \"$BETA\"/" pyproject.toml
+            cat pyproject.toml |grep version
+            poetry publish --build || echo "tried to build"
+            poetry publish --build --skip-existing || echo "tried to build existing"
+            sleep 20  
+        fi
     - name: Set up QEMU for cross-building
       uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
