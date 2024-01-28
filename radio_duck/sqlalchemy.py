@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple
 
 import sqlalchemy
 
@@ -65,6 +65,7 @@ class RadioDuckDialectTypeCompiler(compiler.GenericTypeCompiler):
 
 
 class RadioDuckDialect(default.DefaultDialect):
+    #  https://docs.sqlalchemy.org/en/13/core/reflection.html#sqlalchemy.engine.reflection.Inspector.get_pk_constraint
     type_compiler = RadioDuckDialectTypeCompiler
     preparer = RadioDuckDialectPreparer
 
@@ -342,21 +343,17 @@ class RadioDuckDialect(default.DefaultDialect):
         return seq_names
 
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+        # https://docs.sqlalchemy.org/en/13/core/reflection.html#sqlalchemy.engine.reflection.Inspector.get_pk_constraint
         if schema is None or "" == schema.strip():
             schema = RadioDuckDialect.default_schema_name
 
         rows = self._execute_query(
             connection, get_constraints, schema, table_name, "PRIMARY KEY"
         )  # list of list
-        if len(rows) == 0:
-            return []
+        if len(rows) == 0 or rows[0] is None:
+            return {"name": None, "constrained_columns": []}
         row = rows[0]
-        list_of_maps = (
-            [{"name": row[0], "column_names": row[1]}]
-            if row is not None
-            else []
-        )
-        return list_of_maps
+        return {"name": row[0], "constrained_columns": row[1]}
 
     def get_indexes(self, connection, table_name, schema=None, **kw):
         if schema is None or "" == schema.strip():
@@ -389,9 +386,21 @@ class RadioDuckDialect(default.DefaultDialect):
         rows = self._execute_query(
             connection, get_constraints, schema, table_name, "FOREIGN KEY"
         )  # list of list
-        list_of_maps = [
-            {"name": row[0], "column_names": row[1]} for row in rows
-        ]
+        # https://docs.sqlalchemy.org/en/13/core/reflection.html#sqlalchemy.engine.reflection.Inspector.get_foreign_keys
+        list_of_maps = []
+        for row in rows:
+            refered_table, refered_columns = self._get_reference_details(
+                row[0]
+            )
+            list_of_maps.append(
+                {
+                    "name": row[0],
+                    "constrained_columns": row[1],
+                    "referred_table": refered_table,
+                    "referred_columns": refered_columns,
+                }
+            )
+
         return list_of_maps
 
     def get_columns(self, connection, table_name, schema=None, **kw):
@@ -465,3 +474,35 @@ class RadioDuckDialect(default.DefaultDialect):
                 query, params
             )  # use qmark ? style for params
         return result.fetchall()  # list of list
+
+    def _get_reference_details(
+        self, fk_name: str
+    ) -> Tuple[str | Any, List[str]]:
+        # "FOREIGN KEY (employee_id) REFERENCES employee(employee_id)"
+        """
+        get the referenced table name and its columns
+        :param fk_name:
+        :return: tuple
+        """
+        if (
+            fk_name is None
+            or fk_name.strip() == ""  # noqa: W503
+            or "references" not in fk_name.lower()  # noqa: W503
+        ):  # noqa: E501,B950
+            return (None, [])
+
+        split_result = fk_name.lower().split("references", 1)
+
+        after_references = split_result[1].strip()
+
+        # Using regular expressions to extract
+        # content inside and outside the brackets
+        match = re.match(r"(\w+)\((\w+)\)", after_references)
+
+        if match:
+            refered_table = match.group(1)
+            refered_table_columns = match.group(2).split(",")
+
+            return (refered_table, refered_table_columns)
+        else:
+            return (None, [])
