@@ -473,10 +473,20 @@ def test_get_pk():
     with app.run("localhost", http_server_port):
         with engine.connect() as conn:
             dialect = RadioDuckDialect(dbapi=radio_duck)
-            assert [
-                {"name": "PRIMARY KEY(id)", "column_names": ["id"]}
-            ] == dialect.get_pk_constraint(conn, "students")
-            assert [] == dialect.get_pk_constraint(conn, "foobar")
+            assert (
+                dialect.get_pk_constraint(conn, "students")["name"]
+                == "PRIMARY KEY(id)"  # noqa: W503
+            )
+            assert dialect.get_pk_constraint(conn, "students")[
+                "constrained_columns"
+            ] == ["id"]
+            assert (
+                dialect.get_pk_constraint(conn, "fubr")["name"] is None
+            )  # noqa: E501,E711
+            assert (
+                dialect.get_pk_constraint(conn, "fubr")["constrained_columns"]
+                == []  # noqa: W503
+            )
 
 
 def test_get_indexes():
@@ -552,10 +562,12 @@ def test_get_fk():
             assert [
                 {
                     "name": "FOREIGN KEY (t1_id) REFERENCES t1(id)",
-                    "column_names": ["t1_id"],
+                    "constrained_columns": ["t1_id"],
+                    "referred_table": "t1",
+                    "referred_columns": ["id"],
                 }
             ] == dialect.get_foreign_keys(conn, "t2")
-            assert [] == dialect.get_pk_constraint(conn, "foobar")
+            assert [] == dialect.get_foreign_keys(conn, "foobar")
 
 
 def test_get_columns():
